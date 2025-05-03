@@ -1,5 +1,3 @@
 streamlit
-opencv-python-headless
+streamlit-drawable-canvas
 numpy
-cryptography
-scikit-learn
