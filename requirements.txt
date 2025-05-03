@@ -1,6 +1,5 @@
-
 streamlit
-streamlit-drawable-canvas
-cryptography
+opencv-python
 numpy
+cryptography
 scikit-learn
