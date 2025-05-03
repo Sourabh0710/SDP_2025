@@ -1,0 +1,6 @@
+
+streamlit
+streamlit-drawable-canvas
+cryptography
+numpy
+scikit-learn
