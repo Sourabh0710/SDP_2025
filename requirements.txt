@@ -1,5 +1,6 @@
 streamlit
 streamlit-drawable-canvas
-opencv-python-headless
 numpy
+opencv-python-headless
 cryptography
+scikit-learn
