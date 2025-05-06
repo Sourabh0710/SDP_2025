@@ -1,76 +1,77 @@
 import streamlit as st
-from streamlit_drawable_canvas import st_canvas
-import numpy as np
 from gesture_engine import GestureEngine
+from streamlit_drawable_canvas import st_canvas
 import os
 
-st.set_page_config(page_title="Gesture Lock App", layout="centered")
-
-# Initialize engine
-if "engine" not in st.session_state:
-    st.session_state.engine = GestureEngine()
-if "first_pattern" not in st.session_state:
+# 🔧 Initialize session state
+if 'first_pattern' not in st.session_state:
     st.session_state.first_pattern = None
-if "pattern_set" not in st.session_state:
-    st.session_state.pattern_set = False
+if 'pattern_verified' not in st.session_state:
+    st.session_state.pattern_verified = False
+if 'engine' not in st.session_state:
+    st.session_state.engine = GestureEngine()
+if 'reset_canvas' not in st.session_state:
+    st.session_state.reset_canvas = False
 
-st.title("🔒 Gesture-Based Locking System")
+st.title("🔐 Gesture-Based Pattern Lock")
 
-st.markdown("Draw a gesture pattern in the box below:")
+st.markdown("Draw your gesture pattern below 👇")
 
+# Canvas config
 canvas_result = st_canvas(
-    stroke_width=5,
-    stroke_color="#000000",
-    background_color="#FFFFFF",
+    fill_color="rgba(255, 165, 0, 0.3)",
+    stroke_width=3,
+    stroke_color="#000",
+    background_color="#fff",
+    update_streamlit=True,
     height=300,
     width=300,
     drawing_mode="freedraw",
-    key="canvas"
+    key="canvas",
+    disabled=st.session_state.pattern_verified
 )
 
-if st.button("Submit Pattern"):
-    if canvas_result.json_data is not None:
-        objects = canvas_result.json_data["objects"]
-        if objects:
-            raw_points = []
-            for obj in objects:
-                if obj["type"] == "path":
-                    path = obj["path"]
-                    for seg in path:
-                        if len(seg) >= 3:
-                            raw_points.append(seg[1:3])
+# Reset canvas after submission
+if st.session_state.reset_canvas:
+    st.session_state.canvas = None
+    st.session_state.reset_canvas = False
+    st.rerun()
 
-            if raw_points:
-                gesture = np.array(raw_points, dtype=np.float32)
+# Extract pattern points
+if canvas_result.json_data is not None:
+    raw_objects = canvas_result.json_data["objects"]
+    if raw_objects:
+        pattern_points = [(obj["left"], obj["top"]) for obj in raw_objects if obj["type"] == "path"]
+    else:
+        pattern_points = []
 
-                if not st.session_state.first_pattern:
-                    st.session_state.first_pattern = gesture
-                    st.success("Pattern recorded. Please draw it again to confirm.")
-                else:
-                    if st.session_state.engine.is_match(st.session_state.first_pattern, gesture):
-                        st.session_state.engine.save_pattern(st.session_state.first_pattern)
-                        st.session_state.pattern_set = True
-                        st.success("✅ Pattern confirmed and saved securely.")
-                        st.session_state.first_pattern = None
-                    else:
-                        st.error("❌ Patterns do not match. Please try again.")
-                        st.session_state.first_pattern = None
+    if st.button("✅ Submit Pattern"):
+        if pattern_points:
+            if st.session_state.first_pattern is None:
+                st.session_state.first_pattern = pattern_points
+                st.success("Pattern captured! Please draw it again to confirm.")
+                st.session_state.reset_canvas = True
+                st.rerun()
+            else:
+                if st.session_state.engine.compare_patterns(st.session_state.first_pattern, pattern_points):
+                    st.session_state.pattern_verified = True
+                    st.success("✅ Pattern verified successfully!")
 
-                # Clear canvas on each submission
-                st.experimental_rerun()
-
-# If pattern is set, show project files like GitHub
-if st.session_state.pattern_set:
-    st.subheader("📁 Project Repository Structure")
-    st.code("""
+                    # Show file structure
+                    st.subheader("📁 GitHub-Style Project Structure")
+                    st.code("""
 gesture_lock/
-├── app.py                   ← Streamlit frontend
-├── gesture_engine.py        ← Core logic (resampling, matching)
-├── key.key                  ← Fernet encryption key
-├── patterns.dat             ← Stored gesture patterns (encrypted)
-├── unlock_attempts.log      ← Unlock log file
-├── requirements.txt         ← Dependencies for deployment
-    """, language="bash")
-
-    st.markdown("You can now lock/unlock using your custom gesture.")
-
+├── app.py
+├── gesture_engine.py
+├── key.key
+├── patterns.dat
+├── unlock_attempts.log
+├── requirements.txt
+""", language="text")
+                else:
+                    st.error("❌ Pattern does not match. Please try again.")
+                    st.session_state.first_pattern = None
+                    st.session_state.reset_canvas = True
+                    st.rerun()
+        else:
+            st.warning("Please draw a pattern before submitting.")
